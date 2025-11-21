@@ -1,0 +1,54 @@
+{
+  "name": "duckdb-vscode-viewer",
+  "displayName": "DuckDB CSV/Parquet Viewer",
+  "description": "Open CSV and Parquet files with a DuckDB-backed SQL editor and table viewer.",
+  "version": "0.0.1",
+  "publisher": "your-name-here",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:duckdb.csvViewer",
+    "onCustomEditor:duckdb.parquetViewer"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "duckdb.csvViewer",
+        "displayName": "DuckDB CSV Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.csv"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "duckdb.parquetViewer",
+        "displayName": "DuckDB Parquet Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.parquet"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.3"
+  }
+}
