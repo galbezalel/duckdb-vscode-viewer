@@ -14,5 +14,5 @@ Open CSV or Parquet files with a DuckDB-backed split view. The top pane lets you
 3. Press `F5` in VS Code to launch an Extension Development Host.
 
 ## Notes
-- DuckDB runs in the webview via `@duckdb/duckdb-wasm` loaded from a CDN. The extension does not ship the WASM binary; the user needs internet access on first run to fetch it.
+- DuckDB runs in the webview via `@duckdb/duckdb-wasm`, bundled locally in `media/duckdb` (no CDN required at runtime).
 - For large datasets, limit your queries; only the first 100 rows are shown by default when opening a file.

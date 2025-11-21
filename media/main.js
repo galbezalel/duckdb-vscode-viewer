@@ -19,34 +19,49 @@ const setStatus = (text, variant = "info") => {
   statusEl.className = `status ${variant}`;
 };
 
-const base64ToBytes = (base64) => {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-};
-
 const ensureConnection = async () => {
   if (conn) {
     return conn;
   }
 
-  setStatus("Loading DuckDB (web)...", "info");
-  const duckdb = await import(
-    "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm"
-  );
+  try {
+    setStatus("Loading DuckDB (local wasm)...", "info");
 
-  const bundles = duckdb.getJsDelivrBundles();
-  const bundle = await duckdb.selectBundle(bundles);
-  const worker = new Worker(bundle.mainWorker, { type: "module" });
-  const logger = new duckdb.ConsoleLogger();
-  db = new duckdb.AsyncDuckDB(logger, worker);
-  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-  conn = await db.connect();
-  setStatus("DuckDB ready", "info");
-  return conn;
+    // Get paths injected by the extension host
+    const paths = window.__duckdbPaths;
+    if (!paths?.worker || !paths?.wasm) {
+      throw new Error("DuckDB paths not provided by extension");
+    }
+
+    const duckdb = await import('@duckdb/duckdb-wasm');
+
+    const bundle = {
+      mainModule: paths.wasm,
+      mainWorker: paths.worker,
+      pthreadWorker: null,
+    };
+
+    // Create worker using blob URL to avoid CORS issues
+    const workerUrl = URL.createObjectURL(
+      new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' })
+    );
+    const worker = new Worker(workerUrl);
+    URL.revokeObjectURL(workerUrl);
+
+    const logger = new duckdb.ConsoleLogger();
+    db = new duckdb.AsyncDuckDB(logger, worker);
+    await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+    setStatus("DuckDB ready", "success");
+    conn = await db.connect();
+    return conn;
+  } catch (err) {
+    console.error("DuckDB init failed", err);
+    setStatus(
+      `DuckDB init failed: ${err?.message ?? "Unknown error"}`,
+      "error",
+    );
+    throw err;
+  }
 };
 
 const renderTable = (columns, rows) => {
@@ -62,12 +77,63 @@ const renderTable = (columns, rows) => {
     .map(
       (row) =>
         `<tr>${columns
-          .map((col) => `<td>${row[col] ?? ""}</td>`)
+          .map((col) => `<td title="${row[col] ?? ""}">${row[col] ?? ""}</td>`)
           .join("")}</tr>`,
     )
     .join("");
 
   tableEl.innerHTML = `<table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>`;
+
+  // Add column resizing
+  setupColumnResizing();
+};
+
+const setupColumnResizing = () => {
+  const table = tableEl.querySelector('table');
+  if (!table) return;
+
+  const headers = table.querySelectorAll('th');
+  headers.forEach((th, index) => {
+    let startX, startWidth;
+
+    const onMouseMove = (e) => {
+      const width = startWidth + (e.clientX - startX);
+      th.style.width = Math.max(50, width) + 'px';
+
+      // Update corresponding column cells
+      const cells = table.querySelectorAll(`td:nth-child(${index + 1})`);
+      cells.forEach(cell => {
+        cell.style.width = Math.max(50, width) + 'px';
+      });
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    th.addEventListener('mousedown', (e) => {
+      // Only resize if clicking near the right edge
+      const rect = th.getBoundingClientRect();
+      if (e.clientX > rect.right - 10) {
+        startX = e.clientX;
+        startWidth = th.offsetWidth;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      }
+    });
+
+    // Change cursor when hovering near edge
+    th.addEventListener('mousemove', (e) => {
+      const rect = th.getBoundingClientRect();
+      th.style.cursor = e.clientX > rect.right - 10 ? 'col-resize' : 'default';
+    });
+  });
 };
 
 const copyCsv = () => {
@@ -96,11 +162,12 @@ const copyCsv = () => {
   setStatus("Copied results as CSV", "info");
 };
 
-const defaultQueryForFile = (virtualName, extension) => {
-  if (extension.toLowerCase() === "parquet") {
-    return `SELECT * FROM read_parquet('${virtualName}') LIMIT 100;`;
-  }
-  return `SELECT * FROM read_csv_auto('${virtualName}') LIMIT 100;`;
+const defaultQueryForFile = (virtualName, extension, displayName) => {
+  const source =
+    extension.toLowerCase() === "parquet"
+      ? `read_parquet('${virtualName}')`
+      : `read_csv_auto('${virtualName}')`;
+  return `-- Preview of ${displayName}\nSELECT * FROM ${source}\nLIMIT 100;`;
 };
 
 const runSql = async () => {
@@ -131,12 +198,30 @@ const loadData = async ({ data, name, extension }) => {
     virtualName: `${name}-${Date.now()}`,
   };
   fileNameEl.textContent = name;
-  sqlEditor.value = defaultQueryForFile(currentFile.virtualName, extension);
+  sqlEditor.value = defaultQueryForFile(
+    currentFile.virtualName,
+    extension,
+    name,
+  );
   renderTable([], []);
 
   try {
     const connection = await ensureConnection();
-    const buffer = base64ToBytes(data);
+    const toBytes = (payload) => {
+      if (payload instanceof ArrayBuffer) {
+        return new Uint8Array(payload);
+      }
+      if (ArrayBuffer.isView(payload)) {
+        return new Uint8Array(payload.buffer);
+      }
+      if (Array.isArray(payload)) {
+        return Uint8Array.from(payload);
+      }
+      throw new Error("Unsupported data payload");
+    };
+
+    const buffer = toBytes(data);
+    setStatus(`File received (${buffer.byteLength} bytes). Loading...`, "info");
     await db.registerFileBuffer(currentFile.virtualName, buffer);
     setStatus("File loaded into DuckDB", "success");
     await runSql();
@@ -169,3 +254,16 @@ sqlEditor.addEventListener("keydown", (event) => {
 
 setStatus("Initializing...", "info");
 vscode.postMessage({ type: "ready" });
+
+window.addEventListener("error", (event) => {
+  console.error("Unhandled error", event.error ?? event.message);
+  setStatus(`Error: ${event.error?.message ?? event.message}`, "error");
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Unhandled rejection", event.reason);
+  setStatus(
+    `Error: ${event.reason?.message ?? String(event.reason)}`,
+    "error",
+  );
+});

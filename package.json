@@ -11,10 +11,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCustomEditor:duckdb.csvViewer",
-    "onCustomEditor:duckdb.parquetViewer"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
@@ -42,13 +38,18 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && node build-webview.mjs",
+    "build-webview": "node build-webview.mjs",
     "watch": "tsc -watch -p ./",
     "package": "vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.11.20",
     "@types/vscode": "^1.85.0",
+    "esbuild": "^0.27.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.28.0"
   }
 }
