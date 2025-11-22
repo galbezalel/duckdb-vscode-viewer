@@ -6,6 +6,7 @@ import ResultTable from './ResultTable';
 
 interface CellProps {
     data: CellData;
+    autoFocus?: boolean;
     onRun: () => void;
     onRunAndAdd: () => void;
     onUpdate: (data: Partial<CellData>) => void;
@@ -13,7 +14,7 @@ interface CellProps {
     isLast: boolean;
 }
 
-const Cell: React.FC<CellProps> = ({ data, onRun, onRunAndAdd, onUpdate, onRemove }) => {
+const Cell: React.FC<CellProps> = ({ data, autoFocus, onRun, onRunAndAdd, onUpdate, onRemove }) => {
     return (
         <div className={`cell ${data.status}`}>
             <div className="cell-header">
@@ -40,6 +41,7 @@ const Cell: React.FC<CellProps> = ({ data, onRun, onRunAndAdd, onUpdate, onRemov
             <div className="cell-editor">
                 <SqlEditor
                     value={data.query}
+                    autoFocus={autoFocus}
                     onChange={(val) => onUpdate({ query: val })}
                     onRun={onRun}
                     onRunAndAdd={onRunAndAdd}

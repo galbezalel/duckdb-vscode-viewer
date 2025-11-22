@@ -36,6 +36,7 @@ const App: React.FC = () => {
     const [dbReady, setDbReady] = useState(false);
     const [dbError, setDbError] = useState<string | null>(null);
     const [cells, setCells] = useState<CellData[]>([]);
+    const [focusId, setFocusId] = useState<string | null>(null);
 
     // We'll keep the db instance in a ref or outside React state since it's not render-related directly
     // but for simplicity in this single-file view, we can manage connection state here.
@@ -102,24 +103,47 @@ const App: React.FC = () => {
             setFileInfo({ name, extension, virtualName });
             setDbReady(true);
 
-            // Add initial cells
+            // Add initial cells and run them
             const tableName = 'data_table';
             const createViewQuery = extension.toLowerCase() === 'parquet'
                 ? `CREATE OR REPLACE VIEW ${tableName} AS SELECT * FROM read_parquet('${virtualName}');`
                 : `CREATE OR REPLACE VIEW ${tableName} AS SELECT * FROM read_csv_auto('${virtualName}');`;
 
+            const selectQuery = `SELECT * FROM ${tableName} LIMIT 100`;
+
+            // Execute Create View
+            await conn.query(createViewQuery);
+
+            // Execute Select
+            const result = await conn.query(selectQuery);
+            const rows = result.toArray().map((row: any) => row.toJSON());
+            const columns = result.schema.fields.map((f: any) => f.name);
+
+            const cell3Id = `cell-${Date.now()}`;
+
             setCells([
                 {
                     id: 'cell-1',
                     query: createViewQuery,
-                    status: 'idle'
+                    status: 'success',
+                    executionTime: 0 // Approximate
                 },
                 {
                     id: 'cell-2',
-                    query: `SELECT * FROM ${tableName} LIMIT 100`,
+                    query: selectQuery,
+                    status: 'success',
+                    rows,
+                    columns,
+                    executionTime: 0
+                },
+                {
+                    id: cell3Id,
+                    query: '',
                     status: 'idle'
                 }
             ]);
+
+            setFocusId(cell3Id);
 
         } catch (err: any) {
             console.error(err);
@@ -127,12 +151,15 @@ const App: React.FC = () => {
         }
     };
 
+
     const addCell = () => {
+        const newId = `cell-${Date.now()}`;
         setCells(prev => [...prev, {
-            id: `cell-${Date.now()}`,
+            id: newId,
             query: '',
             status: 'idle'
         }]);
+        setFocusId(newId);
     };
 
     const removeCell = (id: string) => {
@@ -237,6 +264,7 @@ const App: React.FC = () => {
             <main className="notebook-container">
                 <Notebook
                     cells={cells}
+                    focusId={focusId}
                     onRun={runCell}
                     onRunAndAdd={runCellAndAdd}
                     onUpdate={updateCell}

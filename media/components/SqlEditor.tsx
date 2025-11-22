@@ -8,12 +8,13 @@ import { basicSetup } from 'codemirror';
 
 interface SqlEditorProps {
     value: string;
+    autoFocus?: boolean;
     onChange: (value: string) => void;
     onRun: () => void;
     onRunAndAdd: () => void;
 }
 
-const SqlEditor: React.FC<SqlEditorProps> = ({ value, onChange, onRun, onRunAndAdd }) => {
+const SqlEditor: React.FC<SqlEditorProps> = ({ value, autoFocus, onChange, onRun, onRunAndAdd }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
 
@@ -74,10 +75,21 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ value, onChange, onRun, onRunAndA
 
         viewRef.current = view;
 
+        if (autoFocus) {
+            view.focus();
+        }
+
         return () => {
             view.destroy();
         };
     }, []); // Init once
+
+    // Handle autoFocus updates if it changes later (e.g. new cell added)
+    useEffect(() => {
+        if (autoFocus && viewRef.current) {
+            viewRef.current.focus();
+        }
+    }, [autoFocus]);
 
     return <div ref={editorRef} className="sql-editor-container" />;
 };

@@ -4,19 +4,21 @@ import { CellData } from '../App';
 
 interface NotebookProps {
     cells: CellData[];
+    focusId: string | null;
     onRun: (id: string) => void;
     onRunAndAdd: (id: string) => void;
     onUpdate: (id: string, data: Partial<CellData>) => void;
     onRemove: (id: string) => void;
 }
 
-const Notebook: React.FC<NotebookProps> = ({ cells, onRun, onRunAndAdd, onUpdate, onRemove }) => {
+const Notebook: React.FC<NotebookProps> = ({ cells, focusId, onRun, onRunAndAdd, onUpdate, onRemove }) => {
     return (
         <div className="notebook">
             {cells.map((cell, index) => (
                 <Cell
                     key={cell.id}
                     data={cell}
+                    autoFocus={cell.id === focusId}
                     onRun={() => onRun(cell.id)}
                     onRunAndAdd={() => onRunAndAdd(cell.id)}
                     onUpdate={(updates) => onUpdate(cell.id, updates)}
