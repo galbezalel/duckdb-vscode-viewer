@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 async function build() {
   // Bundle the webview JavaScript
   await esbuild.build({
-    entryPoints: [join(__dirname, 'media', 'main.js')],
+    entryPoints: [join(__dirname, 'media', 'index.tsx')],
     bundle: true,
     outfile: join(__dirname, 'out', 'webview.js'),
     format: 'iife',
@@ -16,14 +16,16 @@ async function build() {
     target: 'es2020',
     external: ['vscode'],
     sourcemap: true,
+    loader: { '.tsx': 'tsx', '.ts': 'ts' },
+    define: { 'process.env.NODE_ENV': '"production"' },
   });
 
   // Copy WASM files and workers to out directory
   const duckdbDist = join(__dirname, 'node_modules', '@duckdb', 'duckdb-wasm', 'dist');
   const outDir = join(__dirname, 'out');
-  
+
   await mkdir(outDir, { recursive: true });
-  
+
   const filesToCopy = [
     'duckdb-eh.wasm',
     'duckdb-browser-eh.worker.js',

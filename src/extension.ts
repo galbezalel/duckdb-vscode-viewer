@@ -133,7 +133,7 @@ class DuckDBViewerProvider
     const nonce = this.getNonce();
     const csp = [
       "default-src 'none'",
-      `img-src ${webview.cspSource}`,
+      `img-src ${webview.cspSource} data:`,
       `style-src ${webview.cspSource} 'unsafe-inline'`,
       `script-src ${webview.cspSource} 'nonce-${nonce}' 'wasm-unsafe-eval'`,
       `connect-src ${webview.cspSource}`,
@@ -141,47 +141,26 @@ class DuckDBViewerProvider
       "frame-src 'none'",
     ].join("; ");
 
-    return /* html */ `\u003c!DOCTYPE html\u003e
-\u003chtml lang="en"\u003e
-  \u003chead\u003e
-    \u003cmeta charset="UTF-8" /\u003e
-    \u003cmeta http-equiv="Content-Security-Policy" content="${csp}" /\u003e
-    \u003cmeta name="viewport" content="width=device-width, initial-scale=1.0" /\u003e
-    \u003clink href="${stylesUri}" rel="stylesheet" nonce="${nonce}" /\u003e
-    \u003ctitle\u003eDuckDB Viewer\u003c/title\u003e
-  \u003c/head\u003e
-  \u003cbody\u003e
-    \u003cdiv class="toolbar"\u003e
-      \u003cdiv\u003e
-        \u003cstrong id="fileName"\u003eDuckDB\u003c/strong\u003e
-        \u003cspan id="status" class="status"\u003eReady\u003c/span\u003e
-      \u003c/div\u003e
-      \u003cdiv class="actions"\u003e
-        \u003cbutton id="refresh"\u003eReload File\u003c/button\u003e
-        \u003cbutton id="run" class="primary"\u003eRun (Ctrl/Cmd+Enter)\u003c/button\u003e
-      \u003c/div\u003e
-    \u003c/div\u003e
-    \u003cdiv class="pane-container"\u003e
-      \u003csection class="pane editor"\u003e
-        \u003cdiv id="sql-editor"\u003e\u003c/div\u003e
-      \u003c/section\u003e
-      \u003csection class="pane results"\u003e
-        \u003cdiv class="results-header"\u003e
-          \u003cdiv class="title"\u003eResults\u003c/div\u003e
-          \u003cbutton id="copy"\u003eCopy CSV\u003c/button\u003e
-        \u003c/div\u003e
-        \u003cdiv id="table" class="table"\u003e\u003c/div\u003e
-      \u003c/section\u003e
-    \u003c/div\u003e
-    \u003cscript nonce="${nonce}"\u003e
+    return /* html */ `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="${csp}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="${stylesUri}" rel="stylesheet" nonce="${nonce}" />
+    <title>DuckDB Viewer</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script nonce="${nonce}">
       window.__duckdbPaths = {
         worker: "${duckdbWorkerUri}",
         wasm: "${duckdbWasmUri}"
       };
-    \u003c/script\u003e
-    \u003cscript type="module" nonce="${nonce}" src="${scriptUri}"\u003e\u003c/script\u003e
-  \u003c/body\u003e
-\u003c/html\u003e`;
+    </script>
+    <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
+  </body>
+</html>`;
   }
 
   private getNonce(): string {
