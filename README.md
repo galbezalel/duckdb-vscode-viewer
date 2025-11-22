@@ -14,6 +14,13 @@
  - **Export Results**: Easily export the results of any query cell to **CSV** or **Parquet**.
  - **One-Click Download**: Use the export buttons in the cell header to save your transformed data locally.
  
+ ## Build Instructions
+ 
+ To package the extension into a `.vsix` file yourself:
+ 1. Ensure you have `npm` installed.
+ 2. Run `npx vsce package`.
+ 3. This will create the `.vsix` file in the current directory.
+ 
  ## Development
  1. Install dependencies: `npm install`
  2. Build once: `npm run compile` (or `npm run watch` during development).

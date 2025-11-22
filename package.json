@@ -3,15 +3,23 @@
   "displayName": "DuckDB Notebook",
   "description": "Open CSV and Parquet files with a DuckDB-backed Notebook interface.",
   "version": "0.0.1",
-  "publisher": "your-name-here",
+  "publisher": "galbezalel",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/galbezalel/duckdb-vscode-viewer"
   },
   "categories": [
     "Other"
   ],
   "main": "./out/extension.js",
+  "activationEvents": [
+    "onCustomEditor:duckdb.csvViewer",
+    "onCustomEditor:duckdb.parquetViewer"
+  ],
   "contributes": {
     "customEditors": [
       {
