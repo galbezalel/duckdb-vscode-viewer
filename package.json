@@ -1,7 +1,7 @@
 {
-  "name": "duckdb-vscode-viewer",
-  "displayName": "DuckDB CSV/Parquet Viewer",
-  "description": "Open CSV and Parquet files with a DuckDB-backed SQL editor and table viewer.",
+  "name": "vscode-duckdb-notebook",
+  "displayName": "DuckDB Notebook",
+  "description": "Open CSV and Parquet files with a DuckDB-backed Notebook interface.",
   "version": "0.0.1",
   "publisher": "your-name-here",
   "license": "MIT",
@@ -16,7 +16,7 @@
     "customEditors": [
       {
         "viewType": "duckdb.csvViewer",
-        "displayName": "DuckDB CSV Viewer",
+        "displayName": "DuckDB Notebook (CSV)",
         "selector": [
           {
             "filenamePattern": "*.csv"
@@ -26,7 +26,7 @@
       },
       {
         "viewType": "duckdb.parquetViewer",
-        "displayName": "DuckDB Parquet Viewer",
+        "displayName": "DuckDB Notebook (Parquet)",
         "selector": [
           {
             "filenamePattern": "*.parquet"
