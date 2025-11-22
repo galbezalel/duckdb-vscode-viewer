@@ -1,8 +1,15 @@
+import { EditorView, keymap } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
+import { sql } from '@codemirror/lang-sql';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { defaultKeymap } from '@codemirror/commands';
+import { basicSetup } from 'codemirror';
+
 const vscode = acquireVsCodeApi();
 
 const statusEl = document.getElementById("status");
 const fileNameEl = document.getElementById("fileName");
-const sqlEditor = document.getElementById("sql");
+const sqlEditorEl = document.getElementById("sql-editor");
 const tableEl = document.getElementById("table");
 const copyBtn = document.getElementById("copy");
 const runBtn = document.getElementById("run");
@@ -13,10 +20,39 @@ let conn = null;
 let currentFile = { name: "", extension: "csv", virtualName: "" };
 let lastRows = [];
 let lastColumns = [];
+let sqlEditor = null; // CodeMirror editor instance
 
 const setStatus = (text, variant = "info") => {
   statusEl.textContent = text;
   statusEl.className = `status ${variant}`;
+};
+
+// Initialize CodeMirror editor
+const initEditor = () => {
+  sqlEditor = new EditorView({
+    state: EditorState.create({
+      doc: "",
+      extensions: [
+        basicSetup,
+        sql(),
+        oneDark,
+        keymap.of([
+          {
+            key: "Mod-Enter",
+            run: () => {
+              runSql();
+              return true;
+            }
+          }
+        ]),
+        EditorView.theme({
+          "&": { height: "100%" },
+          ".cm-scroller": { overflow: "auto" }
+        })
+      ]
+    }),
+    parent: sqlEditorEl
+  });
 };
 
 const ensureConnection = async () => {
@@ -43,7 +79,7 @@ const ensureConnection = async () => {
 
     // Create worker using blob URL to avoid CORS issues
     const workerUrl = URL.createObjectURL(
-      new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' })
+      new Blob([`importScripts("${bundle.mainWorker}"); `], { type: 'text/javascript' })
     );
     const worker = new Worker(workerUrl);
     URL.revokeObjectURL(workerUrl);
@@ -57,7 +93,7 @@ const ensureConnection = async () => {
   } catch (err) {
     console.error("DuckDB init failed", err);
     setStatus(
-      `DuckDB init failed: ${err?.message ?? "Unknown error"}`,
+      `DuckDB init failed: ${err?.message ?? "Unknown error"} `,
       "error",
     );
     throw err;
@@ -68,21 +104,22 @@ const renderTable = (columns, rows) => {
   lastColumns = columns;
   lastRows = rows;
   if (!columns.length) {
-    tableEl.innerHTML = `<div class="muted">Query executed. No columns returned.</div>`;
+    tableEl.innerHTML = `\u003cdiv class="muted"\u003eQuery executed. No columns returned.\u003c/div\u003e`;
     return;
   }
 
-  const header = columns.map((c) => `<th>${c}</th>`).join("");
+  const header = columns.map((c) => `\u003cth\u003e${c}\u003c/th\u003e`).join("");
   const body = rows
     .map(
       (row) =>
-        `<tr>${columns
-          .map((col) => `<td title="${row[col] ?? ""}">${row[col] ?? ""}</td>`)
-          .join("")}</tr>`,
+        `\u003ctr\u003e${columns
+          .map((col) => `\u003ctd title="${row[col] ?? ""}"\u003e${row[col] ?? ""}\u003c/td\u003e`)
+          .join("")
+        }\u003c/tr\u003e`,
     )
     .join("");
 
-  tableEl.innerHTML = `<table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table>`;
+  tableEl.innerHTML = `\u003ctable\u003e\u003cthead\u003e\u003ctr\u003e${header}\u003c/tr\u003e\u003c/thead\u003e\u003ctbody\u003e${body}\u003c/tbody\u003e\u003c/table\u003e`;
 
   // Add column resizing
   setupColumnResizing();
@@ -101,7 +138,7 @@ const setupColumnResizing = () => {
       th.style.width = Math.max(50, width) + 'px';
 
       // Update corresponding column cells
-      const cells = table.querySelectorAll(`td:nth-child(${index + 1})`);
+      const cells = table.querySelectorAll(`td: nth - child(${index + 1})`);
       cells.forEach(cell => {
         cell.style.width = Math.max(50, width) + 'px';
       });
@@ -171,7 +208,12 @@ const defaultQueryForFile = (virtualName, extension, displayName) => {
 };
 
 const runSql = async () => {
-  const sql = sqlEditor.value.trim();
+  if (!sqlEditor) {
+    setStatus("SQL Editor not initialized", "error");
+    return;
+  }
+
+  const sql = sqlEditor.state.doc.toString().trim();
   if (!sql) {
     setStatus("SQL is empty", "warn");
     return;
@@ -198,11 +240,17 @@ const loadData = async ({ data, name, extension }) => {
     virtualName: `${name}-${Date.now()}`,
   };
   fileNameEl.textContent = name;
-  sqlEditor.value = defaultQueryForFile(
+
+  // Set CodeMirror content
+  const defaultQuery = defaultQueryForFile(
     currentFile.virtualName,
     extension,
     name,
   );
+  sqlEditor.dispatch({
+    changes: { from: 0, to: sqlEditor.state.doc.length, insert: defaultQuery }
+  });
+
   renderTable([], []);
 
   try {
@@ -245,12 +293,8 @@ refreshBtn.addEventListener("click", () => {
 });
 copyBtn.addEventListener("click", copyCsv);
 
-sqlEditor.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-    event.preventDefault();
-    runSql();
-  }
-});
+// Initialize CodeMirror editor
+initEditor();
 
 setStatus("Initializing...", "info");
 vscode.postMessage({ type: "ready" });

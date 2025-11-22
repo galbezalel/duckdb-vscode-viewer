@@ -134,7 +134,7 @@ class DuckDBViewerProvider
     const csp = [
       "default-src 'none'",
       `img-src ${webview.cspSource}`,
-      `style-src ${webview.cspSource} 'nonce-${nonce}'`,
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
       `script-src ${webview.cspSource} 'nonce-${nonce}' 'wasm-unsafe-eval'`,
       `connect-src ${webview.cspSource}`,
       `worker-src ${webview.cspSource} blob:`,
@@ -163,7 +163,7 @@ class DuckDBViewerProvider
     \u003c/div\u003e
     \u003cdiv class="pane-container"\u003e
       \u003csection class="pane editor"\u003e
-        \u003ctextarea id="sql" spellcheck="false"\u003e\u003c/textarea\u003e
+        \u003cdiv id="sql-editor"\u003e\u003c/div\u003e
       \u003c/section\u003e
       \u003csection class="pane results"\u003e
         \u003cdiv class="results-header"\u003e
